@@ -111,39 +111,6 @@ START → Document Parser → Language Detection → Translation Agent
                          Output Formatter → END
 ```
 
-## 📁 Project Structure
-
-```
-src/
-├── agent/
-│   ├── agents/
-│   │   ├── documentParser.ts
-│   │   ├── languageDetector.ts
-│   │   ├── translator.ts
-│   │   ├── qualityChecker.ts
-│   │   └── outputFormatter.ts
-│   ├── graph/
-│   │   ├── translationGraph.ts
-│   │   └── graphState.ts
-│   ├── tools/
-│   │   ├── documentTools.ts
-│   │   ├── translationTools.ts
-│   │   └── qualityTools.ts
-│   └── utils/
-│       ├── languageUtils.ts
-│       └── formatUtils.ts
-├── app/
-│   ├── api/
-│   │   └── translate/
-│   └── components/
-│       ├── DocumentUpload.tsx
-│       ├── TranslationProgress.tsx
-│       └── ResultDisplay.tsx
-└── types/
-    ├── document.ts
-    ├── translation.ts
-    └── graph.ts
-```
 
 ## 🔄 Agent Communication
 
