@@ -1,0 +1,25 @@
+flowchart TD
+    A[📄 User Uploads PDF] --> B[📊 Document Parser Agent]
+    B --> |"Extracted Text<br/>+ Formatting Metadata<br/>+ Document Structure"| C[🔍 Language Detection Agent]
+    
+    C --> |"Source Language: Spanish<br/>Confidence: 95%"| D{👤 User Selection}
+    D --> |"User selects:<br/>Target Language"| E[🌐 Translation Agent]
+    
+    E --> |"Quality Check<br/>Built-in"| F{Translation Quality}
+    F --> |"Quality < 80%"| G[🔄 Retry Translation]
+    G --> E
+    F --> |"Quality ≥ 80%"| H[📋 Output Formatter Agent]
+    
+    H --> |"Preserves Original<br/>Formatting"| I[✅ Final Translated PDF]
+    
+    %% Styling
+    classDef userInput fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef decision fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef output fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    
+    class A,D userInput
+    class B,C,E,H agent
+    class F decision
+    class I output
+    class G agent

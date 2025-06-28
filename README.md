@@ -4,52 +4,62 @@ A sophisticated multi-agent document translation system built with LangGraph tha
 
 ## 🚀 Overview
 
-This project implements a **5-agent architecture** using LangGraph to create a robust document translation pipeline. Each agent has a specialized role, enabling modular processing, quality control, and intelligent branching logic based on document characteristics and translation requirements.
+This project implements a **4-agent architecture** using LangGraph to create a robust document translation pipeline with human-in-the-loop interaction. The system processes PDF documents through specialized AI agents, preserving original formatting while providing high-quality translations.
+
+**Workflow**: PDF Input → Document Processing → Language Detection → User Selection → Translation → Formatted PDF Output
 
 ## 🏗️ Multi-Agent Architecture
 
-### Agent Roles & Responsibilities
+### Agent Roles, Inputs & Outputs
 
 1. **📄 Document Parser Agent**
-   - Document intake and format detection
-   - Text extraction from various formats (PDF, DOCX, TXT)
-   - Structure preservation and metadata extraction
+   - **Input**: PDF file (binary data/buffer)
+   - **Processing**: Text extraction, format detection, structure preservation
+   - **Output**: 
+     - Extracted text content
+     - Formatting metadata (fonts, layout, styling)
+     - Document structure (headings, paragraphs, tables, images)
+     - Original PDF metadata
 
 2. **🔍 Language Detection Agent**
-   - Source language identification with confidence scoring
-   - Routing logic for language-specific translation strategies
-   - Support for multiple language detection models
+   - **Input**: Extracted text content from Document Parser
+   - **Processing**: Source language identification with confidence scoring
+   - **Output**: 
+     - Detected source language (e.g., "Spanish")
+     - Confidence score (0.0 - 1.0)
+     - Available target languages list
+     - **Human-in-the-Loop**: User selects target language from options
 
-3. **🌐 Translation Agent**
-   - Core translation functionality with context preservation
-   - Multi-target language support
-   - Specialized handling for different language pairs
+3. **🌐 Translation Agent** *(with integrated quality checking)*
+   - **Input**: 
+     - Source text content
+     - Source language (detected)
+     - Target language (user-selected)
+     - Document context and structure
+   - **Processing**: Translation with context preservation + automated quality validation
+   - **Output**: 
+     - High-quality translated text
+     - Translation confidence metrics
+     - Preserved text structure and formatting cues
 
-4. **✅ Quality Checker Agent**
-   - Translation accuracy and fluency validation
-   - Automated quality scoring
-   - Retry logic for subpar translations
+4. **📋 Output Formatter Agent**
+   - **Input**: 
+     - Translated text content
+     - Original formatting metadata
+     - Document structure information
+     - Original PDF styling references
+   - **Processing**: PDF reconstruction with translated content
+   - **Output**: 
+     - **Final translated PDF file** (same/similar format as original)
+     - Translation metadata and processing logs
 
-5. **📋 Output Formatter Agent**
-   - Document structure reconstruction
-   - Format preservation and styling
-   - Final output generation in multiple formats
-
-## 🎯 Features
-
-- **Multi-format Support**: PDF, DOCX, TXT, and more
-- **Intelligent Language Detection**: Automatic source language identification
-- **Quality Assurance**: Built-in translation validation and retry mechanisms
-- **Branching Logic**: Dynamic routing based on language and quality metrics
-- **Scalable Architecture**: Modular agent design for easy extension
-- **Real-time Processing**: Streaming capabilities with progress tracking
-- **Multi-target Translation**: Support for translating to multiple languages simultaneously
 
 ## 🛠️ Technology Stack
 
 - **Framework**: Next.js 15.3.4 with TypeScript
 - **Multi-Agent Orchestration**: LangGraph 0.3.5
 - **LLM Integration**: LangChain with OpenAI & Google Gemini support
+- **Document Processing**: Vercel AI SDK with Gemini (native PDF processing)
 - **UI Framework**: React 19 with Tailwind CSS
 - **Additional Tools**: Tavily Search for enhanced context
 - **State Management**: LangGraph's built-in state management
@@ -72,8 +82,6 @@ This project implements a **5-agent architecture** using LangGraph to create a r
    Create a `.env.local` file and add your API keys:
    ```env
    OPENAI_API_KEY=your_openai_api_key
-   GOOGLE_API_KEY=your_google_api_key
-   TAVILY_API_KEY=your_tavily_api_key
    ```
 
 4. **Run the development server**
@@ -100,15 +108,14 @@ const result = await translationGraph.invoke({
 ### Graph Execution Flow
 
 ```
-START → Document Parser → Language Detection → Translation Agent
+START → Document Parser → Language Detection → [USER SELECTS TARGET LANGUAGE] 
                                ↓                    ↓
-                    (branch by language)    (branch by target)
+                        (detected language)  (user choice)
                                ↓                    ↓
-                           Quality Checker ←────────┘
-                               ↓
-                    (retry if quality < threshold)
-                               ↓
-                         Output Formatter → END
+                          Translation Agent ──────→ Output Formatter → TRANSLATED PDF
+                               ↓                         ↑
+                    (quality validation built-in)       ↑
+                               └─────────────────────────┘
 ```
 
 
@@ -116,20 +123,22 @@ START → Document Parser → Language Detection → Translation Agent
 
 The agents communicate through a shared state that includes:
 
-- **Document metadata**: Format, size, structure
-- **Language information**: Source/target languages, confidence scores
-- **Translation data**: Translated content, quality metrics
+- **Document metadata**: Original PDF format, size, structure, fonts
+- **Extracted content**: Raw text, images, tables, formatting references  
+- **Language information**: Source language, confidence scores, user-selected target language
+- **Translation data**: Translated content with preserved structure markers
 - **Processing status**: Current agent, completion percentage
-- **Quality metrics**: Accuracy scores, validation results
+- **Output specifications**: PDF reconstruction parameters and styling
 
 ## 🎛️ Configuration
 
-### Quality Thresholds
+### Quality & Processing Settings
 ```typescript
-const qualityConfig = {
-  minimumScore: 0.8,
+const translationConfig = {
+  minimumConfidenceScore: 0.8,
   retryAttempts: 3,
-  fallbackStrategy: 'human-review'
+  preserveFormatting: true,
+  outputFormat: 'pdf'
 };
 ```
 
