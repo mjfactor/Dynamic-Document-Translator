@@ -4,33 +4,26 @@ A sophisticated multi-agent document translation system built with LangGraph tha
 
 ## 🚀 Overview
 
-This project implements a **4-agent architecture** using LangGraph to create a robust document translation pipeline with human-in-the-loop interaction. The system processes PDF documents through specialized AI agents, preserving original formatting while providing high-quality translations.
+This project implements a **3-agent architecture** using LangGraph to create a robust document translation pipeline with human-in-the-loop interaction. The system processes PDF documents through specialized AI agents, preserving original formatting while providing high-quality translations.
 
-**Workflow**: PDF Input → Document Processing → Language Detection → User Selection → Translation → Formatted PDF Output
+**Workflow**: PDF Input → Document Processing & Language Detection → User Selection → Translation → Formatted PDF Output
 
 ## 🏗️ Multi-Agent Architecture
 
 ### Agent Roles, Inputs & Outputs
 
-1. **📄 Document Parser Agent**
+1. **📄 Document Parser & Language Detection Agent**
    - **Input**: PDF file (binary data/buffer)
-   - **Processing**: Text extraction, format detection, structure preservation
+   - **Processing**: Text extraction, format detection, structure preservation, and source language identification
    - **Output**: 
      - Extracted text content
      - Formatting metadata (fonts, layout, styling)
      - Document structure (headings, paragraphs, tables, images)
      - Original PDF metadata
+     - Detected source language with confidence scoring
+     - **Human-in-the-Loop**: User selects target language from available options
 
-2. **🔍 Language Detection Agent**
-   - **Input**: Extracted text content from Document Parser
-   - **Processing**: Source language identification with confidence scoring
-   - **Output**: 
-     - Detected source language (e.g., "Spanish")
-     - Confidence score (0.0 - 1.0)
-     - Available target languages list
-     - **Human-in-the-Loop**: User selects target language from options
-
-3. **🌐 Translation Agent** *(with integrated quality checking)*
+2. **🌐 Translation Agent** *(with integrated quality checking)*
    - **Input**: 
      - Source text content
      - Source language (detected)
@@ -42,7 +35,7 @@ This project implements a **4-agent architecture** using LangGraph to create a r
      - Translation confidence metrics
      - Preserved text structure and formatting cues
 
-4. **📋 Output Formatter Agent**
+3. **📋 Output Formatter Agent**
    - **Input**: 
      - Translated text content
      - Original formatting metadata
@@ -108,14 +101,14 @@ const result = await translationGraph.invoke({
 ### Graph Execution Flow
 
 ```
-START → Document Parser → Language Detection → [USER SELECTS TARGET LANGUAGE] 
-                               ↓                    ↓
-                        (detected language)  (user choice)
-                               ↓                    ↓
-                          Translation Agent ──────→ Output Formatter → TRANSLATED PDF
-                               ↓                         ↑
-                    (quality validation built-in)       ↑
-                               └─────────────────────────┘
+START → Document Parser & Language Detection → [USER SELECTS TARGET LANGUAGE] 
+                     ↓                                    ↓
+            (detected language & structure)        (user choice)
+                     ↓                                    ↓
+               Translation Agent ──────────────────→ Output Formatter → TRANSLATED PDF
+                     ↓                                         ↑
+          (quality validation built-in)                       ↑
+                     └─────────────────────────────────────────┘
 ```
 
 

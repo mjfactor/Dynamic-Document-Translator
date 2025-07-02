@@ -1,27 +1,9 @@
 import { google } from '@ai-sdk/google';
-import { generateText } from 'ai';
+import { generateObject } from 'ai';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-
-// Response type definitions
-interface DocumentParserResponse {
-    success: boolean;
-    data?: {
-        extractedText: string;
-        metadata: {
-            filename: string;
-            fileSize: number;
-            extractedAt: string;
-            pageCount?: number;
-        };
-    };
-    error?: string;
-}
-
-interface DocumentParserError {
-    success: false;
-    error: string;
-}
+import { documentParserSchema } from '@/lib/schema/document-parser';
+import { DocumentParserResult, DocumentParserResponse } from '@/lib/types';
 
 // Constants
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -74,14 +56,14 @@ const validateFile = (file: File): { isValid: boolean; error?: string } => {
     }
 };
 
-const createErrorResponse = (message: string, status = 400): NextResponse<DocumentParserError> => {
+const createErrorResponse = (message: string, status = 400): NextResponse => {
     return NextResponse.json(
         { success: false, error: message },
         { status }
     );
 };
 
-const createSuccessResponse = (data: DocumentParserResponse['data']): NextResponse<DocumentParserResponse> => {
+const createSuccessResponse = (data: DocumentParserResult): NextResponse<DocumentParserResponse> => {
     return NextResponse.json(
         { success: true, data },
         { status: 200 }
@@ -114,19 +96,33 @@ export const POST = async (request: NextRequest): Promise<NextResponse> => {
         // Convert file to ArrayBuffer
         const fileBuffer = await file.arrayBuffer();
 
-        // Extract text using Google Gemini
-        const result = await generateText({
+        // Extract comprehensive document data using Google Gemini
+        const result = await generateObject({
             model: google('gemini-2.5-flash'),
+            schema: documentParserSchema,
             messages: [
                 {
                     role: 'user',
                     content: [
                         {
                             type: 'text',
-                            text: `Please extract all text content from this PDF document. 
-                     Preserve the structure and formatting as much as possible. 
-                     Return the complete text content in a clean, readable format. 
-                     If the document has multiple pages, include all content sequentially.`,
+                            text: `Please analyze this PDF document comprehensively and extract:
+
+1. **Text Content**: Complete text extraction preserving structure
+2. **Document Structure**: Identify headings, paragraphs, lists, tables, images, headers, footers
+3. **Formatting Information**: Fonts, text styles (bold, italic, etc.), layout details
+4. **Metadata**: Language detection, title, author, page count, creation date, quality assessment
+
+Extract all content while preserving:
+- Hierarchical structure (headings levels, section organization)
+- Page layout information (columns, margins, orientation)
+- Text formatting (fonts, styles, emphasis)
+- Document properties and metadata
+
+For each section, identify its type, content, and position within the document. Analyze the document quality and provide confidence scores for the extraction.
+
+Filename: ${file.name}
+File size: ${file.size} bytes`,
                         },
                         {
                             type: 'file',
@@ -137,37 +133,43 @@ export const POST = async (request: NextRequest): Promise<NextResponse> => {
                     ],
                 },
             ],
-            maxTokens: 4000, // Generous token limit for large documents
-            temperature: 0, // Deterministic for text extraction
+            temperature: 0, // Deterministic for document parsing
         });
 
-        // Prepare response data
-        const responseData = {
-            extractedText: result.text.trim(),
+        // Enhance the result with additional metadata
+        const enhancedResult: DocumentParserResult = {
+            ...result.object,
             metadata: {
+                ...result.object.metadata,
                 filename: file.name,
                 fileSize: file.size,
                 extractedAt: new Date().toISOString(),
-                // Note: Page count detection would require additional processing
-                // Can be added later if needed
-            },
+            }
         };
 
         // Validate that we got meaningful text
-        if (!responseData.extractedText || responseData.extractedText.length < 10) {
+        if (!enhancedResult.extractedText || enhancedResult.extractedText.length < 10) {
             return createErrorResponse(
                 'Could not extract meaningful text from the PDF. The document may be empty, corrupted, or contain only images.',
                 422
             );
         }
 
-        return createSuccessResponse(responseData);
+        return createSuccessResponse(enhancedResult);
 
     } catch (error) {
         console.error('Document parser error:', error);
 
         // Handle specific error types
         if (error instanceof Error) {
+            // Check for generateObject specific errors
+            if (error.name === 'AI_NoObjectGeneratedError') {
+                return createErrorResponse(
+                    'Failed to parse document structure. The document may be too complex or corrupted.',
+                    422
+                );
+            }
+
             // Check for common API errors
             if (error.message.includes('API key')) {
                 return createErrorResponse('API authentication failed', 401);
@@ -179,6 +181,10 @@ export const POST = async (request: NextRequest): Promise<NextResponse> => {
 
             if (error.message.includes('timeout')) {
                 return createErrorResponse('Document processing timed out. Please try with a smaller file.', 408);
+            }
+
+            if (error.message.includes('token')) {
+                return createErrorResponse('Document is too large to process. Please try with a smaller file.', 413);
             }
 
             // Generic error with message
